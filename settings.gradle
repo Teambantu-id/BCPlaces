@@ -1,0 +1,3 @@
+include ':BCGoogle'
+include ':app'
+rootProject.name = "BCGooleExample"
