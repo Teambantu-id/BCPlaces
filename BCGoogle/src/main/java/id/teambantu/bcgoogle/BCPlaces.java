@@ -11,6 +11,16 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
+import com.android.volley.Cache;
+import com.android.volley.Network;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.BasicNetwork;
+import com.android.volley.toolbox.DiskBasedCache;
+import com.android.volley.toolbox.HurlStack;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -21,6 +31,10 @@ import com.google.android.libraries.places.api.model.PlaceLikelihood;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceResponse;
 import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.gson.Gson;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,10 +45,12 @@ import java.util.Objects;
 
 import id.teambantu.bcgoogle.event.BCPlacesListener;
 import id.teambantu.bcgoogle.model.BCLocation;
+import id.teambantu.bcgoogle.model.BCSearchLocationResult;
 
 public class BCPlaces {
 
     private final static String TAG = BCPlaces.class.getSimpleName();
+    private static RequestQueue requestQueue;
 
     private static PlacesClient initiatePlaces(Context context) {
         Places.initialize(context, context.getString(R.string.googleApiKey));
@@ -113,15 +129,64 @@ public class BCPlaces {
             client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
                 @Override
                 public void onComplete(@NonNull Task<Location> task) {
-                    if(task.isSuccessful()){
+                    if (task.isSuccessful()) {
                         Location location = task.getResult();
-                        if(location!=null)
+                        if (location != null)
                             listener.onSuccess(new BCLocation(location.getLatitude(), location.getLongitude()));
                         else listener.onFailed("No location detected");
                     } else listener.onFailed(task.getException().getMessage());
                 }
             });
         } else listener.onFailed("Permission denied");
-
     }
+
+    public static void searchLocation(Context context, String query, final BCLocation location, final BCPlacesListener listener) {
+        String text = query.replaceAll(" ", "+");
+
+        String URL = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + text
+                + "&location=" + location.getLatitude() + "," + location.getLongitude() + "&radius=1500&language=id&region=id&key=" + context.getString(R.string.googleApiKey);
+
+        getApiFromServer(context, URL, Request.Method.GET, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try{
+                    List<BCLocation> locations = new ArrayList<>();
+                    for (int i = 0; i < response.getJSONArray("results").length(); i++) {
+                        JSONObject jsonObject = response.getJSONArray("results").getJSONObject(i);
+                        Gson gson = new Gson();
+                        BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
+
+                        BCLocation location1 = new BCLocation();
+                        location1.setName(result.getName());
+                        location1.setAddress(result.getFormatted_address());
+                        location1.setLatitude(result.getGeometry().getLocation().getLat());
+                        location1.setLongitude(result.getGeometry().getLocation().getLng());
+
+                        locations.add(location1);
+                    }
+                    listener.onSuccess(locations);
+                } catch (JSONException e) {
+                    listener.onFailed(e.getMessage());
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                listener.onFailed(error.getMessage());
+            }
+        });
+    }
+
+    private static void getApiFromServer(Context context, String URL, int method, Response.Listener listener, Response.ErrorListener error) {
+        JsonObjectRequest jsonObjectRequest;
+        jsonObjectRequest = new JsonObjectRequest(method, URL, null, listener, error);
+        if (requestQueue == null) {
+            Cache cache = new DiskBasedCache(context.getCacheDir(), 1024 * 1024);
+            Network network = new BasicNetwork(new HurlStack());
+            requestQueue = new RequestQueue(cache, network);
+            requestQueue.start();
+        }
+        requestQueue.add(jsonObjectRequest);
+    }
+
 }
