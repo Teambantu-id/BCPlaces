@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
-import android.location.Location;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -44,8 +43,8 @@ import java.util.Locale;
 import java.util.Objects;
 
 import id.teambantu.bcgoogle.event.BCPlacesListener;
-import id.teambantu.bcgoogle.model.BCLocation;
 import id.teambantu.bcgoogle.model.BCSearchLocationResult;
+import id.teambantu.bcmodel.helper.Location;
 
 public class BCPlaces {
 
@@ -61,7 +60,7 @@ public class BCPlaces {
         return new Geocoder(context, Locale.getDefault());
     }
 
-    public static void getPlaces(final Context context, final BCLocation location, final BCPlacesListener listener) {
+    public static void getPlaces(final Context context, final Location location, final BCPlacesListener listener) {
 
         PlacesClient client = initiatePlaces(context);
 
@@ -82,12 +81,13 @@ public class BCPlaces {
 
                             if (places.size() > 0) {
 
-                                BCLocation BCLocation1 = new BCLocation();
-                                BCLocation1.setName(places.get(0).getName());
-                                BCLocation1.setAddress(places.get(0).getAddress());
-                                BCLocation1.setLatitude(Objects.requireNonNull(places.get(0).getLatLng()).latitude);
-                                BCLocation1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
-                                listener.onSuccess(BCLocation1);
+                                id.teambantu.bcmodel.helper.Location location1 = new id.teambantu.bcmodel.helper.Location();
+
+                                location1.setName(places.get(0).getName());
+                                location1.setAddress(places.get(0).getAddress());
+                                location1.setLatitude(Objects.requireNonNull(places.get(0).getLatLng()).latitude);
+                                location1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
+                                listener.onSuccess(location1);
                             } else {
                                 getGeocoderPlaces(context, location, listener);
                             }
@@ -103,17 +103,17 @@ public class BCPlaces {
         } else listener.onFailed("Permission denied");
     }
 
-    public static void getGeocoderPlaces(Context context, BCLocation location, BCPlacesListener listener) {
+    public static void getGeocoderPlaces(Context context, Location location, BCPlacesListener listener) {
         try {
             Geocoder geocoder = initiateGeocode(context);
             List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 10);
-            BCLocation BCLocation1 = new BCLocation();
+            id.teambantu.bcmodel.helper.Location location1 = new id.teambantu.bcmodel.helper.Location();
             if (addresses.size() > 0) {
-                BCLocation1.setAddress(addresses.get(0).getAddressLine(0));
-                BCLocation1.setLongitude(addresses.get(0).getLongitude());
-                BCLocation1.setLatitude(addresses.get(0).getLatitude());
-                BCLocation1.setName(addresses.get(0).getAddressLine(0).split(",")[0]);
-                listener.onSuccess(BCLocation1);
+                location1.setAddress(addresses.get(0).getAddressLine(0));
+                location1.setLongitude(addresses.get(0).getLongitude());
+                location1.setLatitude(addresses.get(0).getLatitude());
+                location1.setName(addresses.get(0).getAddressLine(0).split(",")[0]);
+                listener.onSuccess(location1);
             } else {
                 listener.onFailed("No such as location detected");
             }
@@ -126,13 +126,13 @@ public class BCPlaces {
     public static void getCurrentLocation(Context context, final BCPlacesListener listener) {
         FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(context);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_DENIED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_DENIED) {
-            client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+            client.getLastLocation().addOnCompleteListener(new OnCompleteListener<android.location.Location>() {
                 @Override
-                public void onComplete(@NonNull Task<Location> task) {
+                public void onComplete(@NonNull Task<android.location.Location> task) {
                     if (task.isSuccessful()) {
-                        Location location = task.getResult();
+                        android.location.Location location = task.getResult();
                         if (location != null)
-                            listener.onSuccess(new BCLocation(location.getLatitude(), location.getLongitude()));
+                            listener.onSuccess(new Location(location.getLatitude(), location.getLongitude()));
                         else listener.onFailed("No location detected");
                     } else listener.onFailed(task.getException().getMessage());
                 }
@@ -140,7 +140,7 @@ public class BCPlaces {
         } else listener.onFailed("Permission denied");
     }
 
-    public static void searchLocation(Context context, String query, final BCLocation location, final BCPlacesListener listener) {
+    public static void searchLocation(Context context, String query, final Location location, final BCPlacesListener listener) {
         String text = query.replaceAll(" ", "+");
 
         String URL = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + text
@@ -149,14 +149,14 @@ public class BCPlaces {
         getApiFromServer(context, URL, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                try{
-                    List<BCLocation> locations = new ArrayList<>();
+                try {
+                    List<Location> locations = new ArrayList<>();
                     for (int i = 0; i < response.getJSONArray("results").length(); i++) {
                         JSONObject jsonObject = response.getJSONArray("results").getJSONObject(i);
                         Gson gson = new Gson();
                         BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
 
-                        BCLocation location1 = new BCLocation();
+                        Location location1 = new Location();
                         location1.setName(result.getName());
                         location1.setAddress(result.getFormatted_address());
                         location1.setLatitude(result.getGeometry().getLocation().getLat());
