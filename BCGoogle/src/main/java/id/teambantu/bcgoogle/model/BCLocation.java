@@ -1,15 +1,20 @@
 package id.teambantu.bcgoogle.model;
 
-public class Location {
+public class BCLocation {
     private String name;
     private String address;
     private double latitude;
     private double longitude;
 
-    public Location() {
+    public BCLocation() {
     }
 
-    public Location(String name, String address, double latitude, double longitude) {
+    public BCLocation(double latitude, double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
+
+    public BCLocation(String name, String address, double latitude, double longitude) {
         this.name = name;
         this.address = address;
         this.latitude = latitude;

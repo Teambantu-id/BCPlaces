@@ -27,25 +27,25 @@ import java.util.Locale;
 import java.util.Objects;
 
 import id.teambantu.bcgoogle.event.BCPlacesListener;
-import id.teambantu.bcgoogle.model.Location;
+import id.teambantu.bcgoogle.model.BCLocation;
 
 public class BCPlaces {
 
     private final static String TAG = BCPlaces.class.getSimpleName();
 
-    private PlacesClient client;
-    private Context context;
-    private Geocoder geocoder;
-
-    public BCPlaces(Context context) {
-        this.context = context;
-
-        Places.initialize(this.context, context.getString(R.string.googleApiKey));
-        this.client = Places.createClient(context);
-        this.geocoder = new Geocoder(context, Locale.getDefault());
+    private static PlacesClient initiatePlaces(Context context){
+        Places.initialize(context, context.getString(R.string.googleApiKey));
+        return Places.createClient(context);
     }
 
-    public void getPlaces(final Location location, final BCPlacesListener listener) {
+    private static Geocoder initiateGeocode(Context context){
+        return new Geocoder(context, Locale.getDefault());
+    }
+
+    public static void getPlaces(final Context context, final BCLocation location, final BCPlacesListener listener) {
+
+        PlacesClient client = initiatePlaces(context);
+
         List<Place.Field> placeField = Arrays.asList(Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
         FindCurrentPlaceRequest request = FindCurrentPlaceRequest.newInstance(placeField);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -63,37 +63,38 @@ public class BCPlaces {
 
                             if (places.size() > 0) {
 
-                                Location location1 = new Location();
-                                location1.setName(places.get(0).getName());
-                                location1.setAddress(places.get(0).getAddress());
-                                location1.setLatitude(Objects.requireNonNull(places.get(0).getLatLng()).latitude);
-                                location1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
-                                listener.onSuccess(location1);
+                                BCLocation BCLocation1 = new BCLocation();
+                                BCLocation1.setName(places.get(0).getName());
+                                BCLocation1.setAddress(places.get(0).getAddress());
+                                BCLocation1.setLatitude(Objects.requireNonNull(places.get(0).getLatLng()).latitude);
+                                BCLocation1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
+                                listener.onSuccess(BCLocation1);
                             } else {
-                                getGeocoderPlaces(location, listener);
+                                getGeocoderPlaces(context, location, listener);
                             }
                         } else {
-                            getGeocoderPlaces(location, listener);
+                            getGeocoderPlaces(context, location, listener);
                         }
                     } else {
                         Log.d(TAG, "onComplete: " + task.getException());
-                        getGeocoderPlaces(location, listener);
+                        getGeocoderPlaces(context, location, listener);
                     }
                 }
             });
         } else listener.onFailed("Permission denied");
     }
 
-    public void getGeocoderPlaces(Location location, BCPlacesListener listener) {
+    public static void getGeocoderPlaces(Context context, BCLocation location, BCPlacesListener listener) {
         try {
+            Geocoder geocoder = initiateGeocode(context);
             List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 10);
-            Location location1 = new Location();
+            BCLocation BCLocation1 = new BCLocation();
             if(addresses.size()>0){
-                location1.setAddress(addresses.get(0).getAddressLine(0));
-                location1.setLongitude(addresses.get(0).getLongitude());
-                location1.setLatitude(addresses.get(0).getLatitude());
-                location1.setName(addresses.get(0).getAddressLine(0).split(",")[0]);
-                listener.onSuccess(location1);
+                BCLocation1.setAddress(addresses.get(0).getAddressLine(0));
+                BCLocation1.setLongitude(addresses.get(0).getLongitude());
+                BCLocation1.setLatitude(addresses.get(0).getLatitude());
+                BCLocation1.setName(addresses.get(0).getAddressLine(0).split(",")[0]);
+                listener.onSuccess(BCLocation1);
             } else {
                 listener.onFailed("No such as location detected");
             }
