@@ -61,7 +61,7 @@ public  class BCPlaces {
     }
 
     public static void getAddress(final Context context, final Location location, final BCPlacesListener listener) {
-        String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng="+location.getLatitude() +","+location.getLongitude()+"&key=" + context.getString(R.string.googleApiKey);
+        String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng="+location.getLatitude() +","+location.getLongitude()+"&key=" + context.getString(R.string.googleApiKey)+"&language=id";
         getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
@@ -73,7 +73,7 @@ public  class BCPlaces {
                         BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
 
                         Location location1 = new Location();
-                        location1.setName(result.getName());
+                        location1.setName(result.getFormatted_address().split(",")[0]);
                         location1.setAddress(result.getFormatted_address());
                         location1.setLatitude(result.getGeometry().getLocation().getLat());
                         location1.setLongitude(result.getGeometry().getLocation().getLng());
