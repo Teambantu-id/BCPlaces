@@ -5,11 +5,14 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
@@ -33,12 +36,12 @@ public class BCPlaces {
 
     private final static String TAG = BCPlaces.class.getSimpleName();
 
-    private static PlacesClient initiatePlaces(Context context){
+    private static PlacesClient initiatePlaces(Context context) {
         Places.initialize(context, context.getString(R.string.googleApiKey));
         return Places.createClient(context);
     }
 
-    private static Geocoder initiateGeocode(Context context){
+    private static Geocoder initiateGeocode(Context context) {
         return new Geocoder(context, Locale.getDefault());
     }
 
@@ -89,7 +92,7 @@ public class BCPlaces {
             Geocoder geocoder = initiateGeocode(context);
             List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 10);
             BCLocation BCLocation1 = new BCLocation();
-            if(addresses.size()>0){
+            if (addresses.size() > 0) {
                 BCLocation1.setAddress(addresses.get(0).getAddressLine(0));
                 BCLocation1.setLongitude(addresses.get(0).getLongitude());
                 BCLocation1.setLatitude(addresses.get(0).getLatitude());
@@ -102,5 +105,23 @@ public class BCPlaces {
         } catch (IOException e) {
             listener.onFailed(e.getMessage());
         }
+    }
+
+    public static void getCurrentLocation(Context context, final BCPlacesListener listener) {
+        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(context);
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_DENIED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_DENIED) {
+            client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    if(task.isSuccessful()){
+                        Location location = task.getResult();
+                        if(location!=null)
+                            listener.onSuccess(new BCLocation(location.getLatitude(), location.getLongitude()));
+                        else listener.onFailed("No location detected");
+                    } else listener.onFailed(task.getException().getMessage());
+                }
+            });
+        } else listener.onFailed("Permission denied");
+
     }
 }
