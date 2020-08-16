@@ -81,7 +81,7 @@ public  class BCPlaces {
                         locations.add(location1);
                     }
                     listener.onSuccess(locations);
-                    listener.onSuccess(locations.get(0));
+                    listener.onSuccess(locations.size()>0?locations.get(0):new Location());
                 } catch (JSONException e) {
                     listener.onFailed(e.getMessage());
                 }
