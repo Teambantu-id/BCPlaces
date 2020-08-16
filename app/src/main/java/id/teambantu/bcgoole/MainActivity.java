@@ -1,17 +1,13 @@
 package id.teambantu.bcgoole;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
-import android.util.Log;
 
-import java.util.Arrays;
-import java.util.List;
+import androidx.appcompat.app.AppCompatActivity;
 
 import id.teambantu.bcgoogle.BCPlaces;
 import id.teambantu.bcgoogle.event.BCPlacesListener;
-import id.teambantu.bcgoogle.model.BCLocation;
-import id.teambantu.bcgoogle.model.BCSearchLocationResult;
+
+import static id.teambantu.bcgoogle.BCPlaces.getAddress;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,5 +15,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        getAddress(this, new BCPlacesListener() {
+            @Override
+            public void onFailed(String message) {
+
+            }
+        });
+
     }
 }

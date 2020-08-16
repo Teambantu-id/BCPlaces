@@ -46,7 +46,7 @@ import id.teambantu.bcgoogle.event.BCPlacesListener;
 import id.teambantu.bcgoogle.model.BCSearchLocationResult;
 import id.teambantu.bcmodel.helper.Location;
 
-public class BCPlaces {
+public  class BCPlaces {
 
     private final static String TAG = BCPlaces.class.getSimpleName();
     private static RequestQueue requestQueue;
@@ -58,6 +58,41 @@ public class BCPlaces {
 
     private static Geocoder initiateGeocode(Context context) {
         return new Geocoder(context, Locale.getDefault());
+    }
+
+    public static void getAddress(final Context context, final Location location, final BCPlacesListener listener) {
+        String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng="+location.getLatitude() +","+location.getLongitude()+"&key=" + context.getString(R.string.googleApiKey);
+        getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    List<Location> locations = new ArrayList<>();
+                    for (int i = 0; i < response.getJSONArray("results").length(); i++) {
+                        JSONObject jsonObject = response.getJSONArray("results").getJSONObject(i);
+                        Gson gson = new Gson();
+                        BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
+
+                        Location location1 = new Location();
+                        location1.setName(result.getName());
+                        location1.setAddress(result.getFormatted_address());
+                        location1.setLatitude(result.getGeometry().getLocation().getLat());
+                        location1.setLongitude(result.getGeometry().getLocation().getLng());
+
+                        locations.add(location1);
+                    }
+                    listener.onSuccess(locations);
+                    listener.onSuccess(locations.get(0));
+                } catch (JSONException e) {
+                    listener.onFailed(e.getMessage());
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                listener.onFailed(error.getMessage());
+            }
+        });
+
     }
 
     public static void getPlaces(final Context context, final Location location, final BCPlacesListener listener) {
@@ -89,40 +124,19 @@ public class BCPlaces {
                                 location1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
                                 listener.onSuccess(location1);
                             } else {
-                                getGeocoderPlaces(context, location, listener);
+                                getAddress(context, location, listener);
                             }
                         } else {
-                            getGeocoderPlaces(context, location, listener);
+                            getAddress(context, location, listener);
                         }
                     } else {
                         Log.d(TAG, "onComplete: " + task.getException());
-                        getGeocoderPlaces(context, location, listener);
+                        getAddress(context, location, listener);
                     }
                 }
             });
         } else listener.onFailed("Permission denied");
     }
-
-    public static void getGeocoderPlaces(Context context, Location location, BCPlacesListener listener) {
-        try {
-            Geocoder geocoder = initiateGeocode(context);
-            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 10);
-            id.teambantu.bcmodel.helper.Location location1 = new id.teambantu.bcmodel.helper.Location();
-            if (addresses.size() > 0) {
-                location1.setAddress(addresses.get(0).getAddressLine(0));
-                location1.setLongitude(addresses.get(0).getLongitude());
-                location1.setLatitude(addresses.get(0).getLatitude());
-                location1.setName(addresses.get(0).getAddressLine(0).split(",")[0]);
-                listener.onSuccess(location1);
-            } else {
-                listener.onFailed("No such as location detected");
-            }
-
-        } catch (IOException e) {
-            listener.onFailed(e.getMessage());
-        }
-    }
-
     public static void getCurrentLocation(Context context, final BCPlacesListener listener) {
         FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(context);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_DENIED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_DENIED) {
@@ -134,7 +148,8 @@ public class BCPlaces {
                         if (location != null)
                             listener.onSuccess(new Location(location.getLatitude(), location.getLongitude()));
                         else listener.onFailed("No location detected");
-                    } else listener.onFailed(task.getException().getMessage());
+                    } else
+                        listener.onFailed(Objects.requireNonNull(task.getException()).getMessage());
                 }
             });
         } else listener.onFailed("Permission denied");
@@ -144,7 +159,7 @@ public class BCPlaces {
         String text = query.replaceAll(" ", "+");
 
         String URL = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + text
-                + "&location=" + location.getLatitude() + "," + location.getLongitude() + "&radius=1500&language=id&region=id&key=" + context.getString(R.string.googleApiKey);
+                + "&location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
 
         getApiFromServer(context, URL, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
