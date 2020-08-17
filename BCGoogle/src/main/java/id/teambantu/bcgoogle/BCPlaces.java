@@ -162,7 +162,7 @@ public class BCPlaces {
     }
 
     public static void nearbyLocation(final Context context, final Location location, final BCPlacesListener listener) {
-        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&radius=100&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
+        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
         getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
