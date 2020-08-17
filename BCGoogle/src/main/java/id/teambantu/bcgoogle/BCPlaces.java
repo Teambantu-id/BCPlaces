@@ -41,6 +41,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import id.teambantu.bcgoogle.event.BCPlacesListener;
+import id.teambantu.bcgoogle.model.BCNearbyLocationResult;
 import id.teambantu.bcgoogle.model.BCSearchLocationResult;
 import id.teambantu.bcmodel.helper.Location;
 
@@ -91,49 +92,6 @@ public class BCPlaces {
             }
         });
 
-    }
-
-    public static void getPlaces(final Context context, final Location location, final BCPlacesListener listener) {
-
-        PlacesClient client = initiatePlaces(context);
-
-        List<Place.Field> placeField = Arrays.asList(Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
-        FindCurrentPlaceRequest request = FindCurrentPlaceRequest.newInstance(placeField);
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            client.findCurrentPlace(request).addOnCompleteListener(new OnCompleteListener<FindCurrentPlaceResponse>() {
-                @Override
-                public void onComplete(@NonNull Task<FindCurrentPlaceResponse> task) {
-                    if (task.isSuccessful()) {
-                        FindCurrentPlaceResponse response = task.getResult();
-                        if (response != null && response.getPlaceLikelihoods().size() > 0) {
-                            List<Place> places = new ArrayList<>();
-                            for (PlaceLikelihood placeLikelihood : response.getPlaceLikelihoods()) {
-                                if (placeLikelihood.getLikelihood() > 0.25f)
-                                    places.add(placeLikelihood.getPlace());
-                            }
-
-                            if (places.size() > 0) {
-
-                                id.teambantu.bcmodel.helper.Location location1 = new id.teambantu.bcmodel.helper.Location();
-
-                                location1.setName(places.get(0).getName());
-                                location1.setAddress(places.get(0).getAddress());
-                                location1.setLatitude(Objects.requireNonNull(places.get(0).getLatLng()).latitude);
-                                location1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
-                                listener.onSuccess(location1);
-                            } else {
-                                nearbyLocation(context, location, listener);
-                            }
-                        } else {
-                            nearbyLocation(context, location, listener);
-                        }
-                    } else {
-                        Log.d(TAG, "onComplete: " + task.getException());
-                        nearbyLocation(context, location, listener);
-                    }
-                }
-            });
-        } else listener.onFailed("Permission denied");
     }
 
     public static void getCurrentLocation(Context context, final BCPlacesListener listener) {
@@ -204,7 +162,7 @@ public class BCPlaces {
     }
 
     public static void nearbyLocation(final Context context, final Location location, final BCPlacesListener listener) {
-        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
+        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&radius=100&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
         getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
@@ -213,11 +171,11 @@ public class BCPlaces {
                     for (int i = 0; i < response.getJSONArray("results").length(); i++) {
                         JSONObject jsonObject = response.getJSONArray("results").getJSONObject(i);
                         Gson gson = new Gson();
-                        BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
+                        BCNearbyLocationResult result = gson.fromJson(jsonObject.toString(), BCNearbyLocationResult.class);
 
                         Location location1 = new Location();
                         location1.setName(result.getName());
-                        location1.setAddress(result.getFormatted_address());
+                        location1.setAddress(result.getVicinity());
                         location1.setLatitude(result.getGeometry().getLocation().getLat());
                         location1.setLongitude(result.getGeometry().getLocation().getLng());
 
