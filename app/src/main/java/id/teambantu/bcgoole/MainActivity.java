@@ -18,10 +18,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BCPlaces.getAddress(this, new Location(3.562499, 98.659535), new BCPlacesListener() {
+//        BCPlaces.getAddress(this, new Location(3.562499, 98.659535), new BCPlacesListener() {
+//            @Override
+//            public void onSuccess(List<Location> locations) {
+//                Log.d("TAG", "onSuccess: " + locations);
+//            }
+//
+//            @Override
+//            public void onFailed(String message) {
+//
+//            }
+//        });
+
+        BCPlaces.nearbyLocation(this, new Location(3.562788, 98.659356), new BCPlacesListener() {
             @Override
             public void onSuccess(List<Location> locations) {
-                Log.d("TAG", "onSuccess: " + locations);
+                for (Location loc:
+                     locations) {
+                    Log.d("TAG", "onSuccess: " + loc.getName());
+                }
             }
 
             @Override

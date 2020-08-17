@@ -3,7 +3,6 @@ package id.teambantu.bcgoogle;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.location.Address;
 import android.location.Geocoder;
 import android.util.Log;
 
@@ -22,11 +21,18 @@ import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.AutocompletePrediction;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.PlaceLikelihood;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
+import com.google.android.libraries.places.api.net.FetchPlaceResponse;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceResponse;
 import com.google.android.libraries.places.api.net.PlacesClient;
@@ -35,7 +41,6 @@ import com.google.gson.Gson;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,7 +51,7 @@ import id.teambantu.bcgoogle.event.BCPlacesListener;
 import id.teambantu.bcgoogle.model.BCSearchLocationResult;
 import id.teambantu.bcmodel.helper.Location;
 
-public  class BCPlaces {
+public class BCPlaces {
 
     private final static String TAG = BCPlaces.class.getSimpleName();
     private static RequestQueue requestQueue;
@@ -61,7 +66,7 @@ public  class BCPlaces {
     }
 
     public static void getAddress(final Context context, final Location location, final BCPlacesListener listener) {
-        String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng="+location.getLatitude() +","+location.getLongitude()+"&key=" + context.getString(R.string.googleApiKey)+"&language=id";
+        String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + location.getLatitude() + "," + location.getLongitude() + "&key=" + context.getString(R.string.googleApiKey) + "&language=id";
         getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
@@ -81,7 +86,7 @@ public  class BCPlaces {
                         locations.add(location1);
                     }
                     listener.onSuccess(locations);
-                    listener.onSuccess(locations.size()>0?locations.get(0):new Location());
+                    listener.onSuccess(locations.size() > 0 ? locations.get(0) : new Location());
                 } catch (JSONException e) {
                     listener.onFailed(e.getMessage());
                 }
@@ -137,6 +142,7 @@ public  class BCPlaces {
             });
         } else listener.onFailed("Permission denied");
     }
+
     public static void getCurrentLocation(Context context, final BCPlacesListener listener) {
         FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(context);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_DENIED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_DENIED) {
@@ -202,6 +208,44 @@ public  class BCPlaces {
             requestQueue.start();
         }
         requestQueue.add(jsonObjectRequest);
+    }
+
+    public static void nearbyLocation(Context context, Location location,final BCPlacesListener listener) {
+        String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
+        getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    List<Location> locations = new ArrayList<>();
+                    for (int i = 0; i < response.getJSONArray("results").length(); i++) {
+                        JSONObject jsonObject = response.getJSONArray("results").getJSONObject(i);
+                        Gson gson = new Gson();
+                        BCSearchLocationResult result = gson.fromJson(jsonObject.toString(), BCSearchLocationResult.class);
+
+                        Location location1 = new Location();
+                        location1.setName(result.getName());
+                        location1.setAddress(result.getFormatted_address());
+                        location1.setLatitude(result.getGeometry().getLocation().getLat());
+                        location1.setLongitude(result.getGeometry().getLocation().getLng());
+
+                        locations.add(location1);
+                    }
+                    if(locations.size()>0){
+                        listener.onSuccess(locations);
+                        listener.onSuccess(locations.get(0));
+                    } else {
+                        listener.onFailed("Unknown Places");
+                    }
+                } catch (JSONException e) {
+                    listener.onFailed(e.getMessage());
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                listener.onFailed(error.getMessage());
+            }
+        });
     }
 
 }
