@@ -21,18 +21,11 @@ import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
-import com.google.android.libraries.places.api.model.AutocompletePrediction;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.PlaceLikelihood;
-import com.google.android.libraries.places.api.net.FetchPlaceRequest;
-import com.google.android.libraries.places.api.net.FetchPlaceResponse;
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest;
 import com.google.android.libraries.places.api.net.FindCurrentPlaceResponse;
 import com.google.android.libraries.places.api.net.PlacesClient;
@@ -129,14 +122,14 @@ public class BCPlaces {
                                 location1.setLongitude(Objects.requireNonNull(places.get(0).getLatLng()).longitude);
                                 listener.onSuccess(location1);
                             } else {
-                                getAddress(context, location, listener);
+                                nearbyLocation(context, location, listener);
                             }
                         } else {
-                            getAddress(context, location, listener);
+                            nearbyLocation(context, location, listener);
                         }
                     } else {
                         Log.d(TAG, "onComplete: " + task.getException());
-                        getAddress(context, location, listener);
+                        nearbyLocation(context, location, listener);
                     }
                 }
             });
@@ -210,7 +203,7 @@ public class BCPlaces {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public static void nearbyLocation(Context context, Location location,final BCPlacesListener listener) {
+    public static void nearbyLocation(final Context context, final Location location, final BCPlacesListener listener) {
         String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + location.getLatitude() + "," + location.getLongitude() + "&language=id&rankby=distance&region=id&key=" + context.getString(R.string.googleApiKey);
         getApiFromServer(context, url, Request.Method.GET, new Response.Listener<JSONObject>() {
             @Override
@@ -230,20 +223,22 @@ public class BCPlaces {
 
                         locations.add(location1);
                     }
-                    if(locations.size()>0){
+                    if (locations.size() > 0) {
                         listener.onSuccess(locations);
                         listener.onSuccess(locations.get(0));
                     } else {
-                        listener.onFailed("Unknown Places");
+                        getAddress(context, location, listener);
                     }
                 } catch (JSONException e) {
-                    listener.onFailed(e.getMessage());
+                    Log.d(TAG, "onResponse: " + e);
+                    getAddress(context, location, listener);
                 }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                listener.onFailed(error.getMessage());
+                getAddress(context, location, listener);
+                Log.d(TAG, "onErrorResponse: " + error);
             }
         });
     }
